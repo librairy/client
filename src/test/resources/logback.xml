@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright (c) 2016. Universidad Politecnica de Madrid
+  ~
+  ~ @author Badenes Olmedo, Carlos <cbadenes@fi.upm.es>
+  ~
+  -->
+
+<configuration scan="true" scanPeriod="30 seconds">
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %highlight(%-5level) %cyan(%logger{15}) - %msg %n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="com.datastax" level="ERROR"/>
+    <logger name="org.librairy" level="ERROR"/>
+    <logger name="org.librairy.client" level="DEBUG"/>
+    <logger name="org.springframework.data.neo4j.mapping.Neo4jPersistentProperty" level="ERROR"/>
+
+    <root level="WARN">
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>

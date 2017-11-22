@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright (c) 2016. Universidad Politecnica de Madrid
+  ~
+  ~ @author Badenes Olmedo, Carlos <cbadenes@fi.upm.es>
+  ~
+  -->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.librairy</groupId>
+    <artifactId>client</artifactId>
+    <version>1.0</version>
+    <packaging>jar</packaging>
+    <name>librairy-client</name>
+    <description>Connect to librAIry</description>
+    <url>https://github.com/librairy/client</url>
+    <organization>
+        <name>Ontology Engineering Group</name>
+        <url>http://www.oeg-upm.net</url>
+    </organization>
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+        </license>
+    </licenses>
+    <inceptionYear>2017</inceptionYear>
+    <scm>
+        <url>https://github.com/librairy/client</url>
+    </scm>
+    <developers>
+        <developer>
+            <id>cbadenes</id>
+            <name>Carlos Badenes Olmedo</name>
+            <email>cbadenes at fi.upm.es</email>
+        </developer>
+    </developers>
+    <prerequisites>
+        <maven>3.0.0</maven>
+    </prerequisites>
+    <properties>
+        <!-- Project Details -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.java.version>1.8</project.java.version>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- Maven Plugins -->
+        <maven.compiler.plugin.version>3.3</maven.compiler.plugin.version>
+        <maven.scala.version>2.9.1</maven.scala.version><!-- 2.15.2 -->
+        <maven.surefire.plugin.version>2.11</maven.surefire.plugin.version>
+        <maven.resources.plugin.version>2.7</maven.resources.plugin.version>
+		<surefire.junit.plugin.version>2.12</surefire.junit.plugin.version>
+
+        <!-- Project Dependencies -->
+        <librairy.version>1.8.5.3</librairy.version>
+        <scala.version>2.9.1</scala.version><!-- 2.10.6 -->
+
+        <!-- Test Dependencies -->
+        <junit.version>4.12</junit.version>
+        <testutils.version>1.0.0</testutils.version>
+    </properties>
+
+
+    <dependencyManagement>
+        <dependencies>
+
+            <dependency>
+                <groupId>org.librairy</groupId>
+                <artifactId>librairy-boot</artifactId>
+                <version>${librairy.version}</version>
+            </dependency>
+
+            <!--&lt;!&ndash; Scala Libraries &ndash;&gt;-->
+            <!--<dependency>-->
+                <!--<groupId>org.scala-lang</groupId>-->
+                <!--<artifactId>scalap</artifactId>-->
+                <!--<version>${scala.version}</version>-->
+            <!--</dependency>-->
+            <!--<dependency>-->
+                <!--<groupId>org.scala-lang</groupId>-->
+                <!--<artifactId>scala-library</artifactId>-->
+                <!--<version>${scala.version}</version>-->
+            <!--</dependency>-->
+            <!--<dependency>-->
+                <!--<groupId>org.scala-lang</groupId>-->
+                <!--<artifactId>scala-compiler</artifactId>-->
+                <!--<version>${scala.version}</version>-->
+            <!--</dependency>-->
+            <!--<dependency>-->
+                <!--<groupId>org.scala-lang</groupId>-->
+                <!--<artifactId>scala-reflect</artifactId>-->
+                <!--<version>${scala.version}</version>-->
+            <!--</dependency>-->
+
+            <!-- Unit tests Libraries -->
+            <dependency>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+                <version>${junit.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>es.cbadenes.lab</groupId>
+                <artifactId>test-utils</artifactId>
+                <version>${testutils.version}</version>
+            </dependency>
+
+
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>org.librairy</groupId>
+            <artifactId>librairy-boot</artifactId>
+        </dependency>
+
+
+        <dependency>
+            <groupId>org.stanford</groupId>
+            <artifactId>topic-model-toolbox</artifactId>
+            <version>1.1</version>
+            <scope>system</scope>
+            <systemPath>${basedir}/src/main/lib/tmt-0.4.0.1.jar</systemPath>
+        </dependency>
+
+
+        <!--&lt;!&ndash; Scala Libraries &ndash;&gt;-->
+        <!--<dependency>-->
+            <!--<groupId>org.scala-lang</groupId>-->
+            <!--<artifactId>scalap</artifactId>-->
+        <!--</dependency>-->
+        <!--<dependency>-->
+            <!--<groupId>org.scala-lang</groupId>-->
+            <!--<artifactId>scala-library</artifactId>-->
+        <!--</dependency>-->
+        <!--<dependency>-->
+            <!--<groupId>org.scala-lang</groupId>-->
+            <!--<artifactId>scala-compiler</artifactId>-->
+        <!--</dependency>-->
+        <!--<dependency>-->
+            <!--<groupId>org.scala-lang</groupId>-->
+            <!--<artifactId>scala-reflect</artifactId>-->
+        <!--</dependency>-->
+
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>${scala.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>es.cbadenes.lab</groupId>
+            <artifactId>test-utils</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <plugin>
+                <groupId>org.scala-tools</groupId>
+                <artifactId>maven-scala-plugin</artifactId>
+                <version>${maven.scala.version}</version>
+                <executions>
+                    <execution>
+                        <id>scala-compile</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>testCompile</goal>
+                        </goals>
+                        <!--<configuration>-->
+                            <!--<args>-->
+                                <!--<arg>-dependencyfile</arg>-->
+                                <!--<arg>${project.build.directory}/.scala_dependencies</arg>-->
+                            <!--</args>-->
+                        <!--</configuration>-->
+                    </execution>
+                </executions>
+            </plugin>
+            <!--<plugin>-->
+                <!--<groupId>net.alchim31.maven</groupId>-->
+                <!--<artifactId>scala-maven-plugin</artifactId>-->
+                <!--<executions>-->
+                    <!--<execution>-->
+                        <!--<id>scala-compile-first</id>-->
+                        <!--<phase>process-resources</phase>-->
+                        <!--<goals>-->
+                            <!--<goal>add-source</goal>-->
+                            <!--<goal>compile</goal>-->
+                        <!--</goals>-->
+                    <!--</execution>-->
+                    <!--<execution>-->
+                        <!--<id>scala-test-compile</id>-->
+                        <!--<phase>process-test-resources</phase>-->
+                        <!--<goals>-->
+                            <!--<goal>testCompile</goal>-->
+                        <!--</goals>-->
+                    <!--</execution>-->
+                <!--</executions>-->
+            <!--</plugin>-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven.surefire.plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.maven.surefire</groupId>
+                        <artifactId>surefire-junit47</artifactId>
+                        <version>${surefire.junit.plugin.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <includes>
+                        <include>**/*.class</include>
+                    </includes>
+                    <excludedGroups>es.cbadenes.lab.test.IntegrationTest</excludedGroups>
+                </configuration>
+            </plugin>
+
+
+            <!-- Maven Compiler Plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven.compiler.plugin.version}</version>
+                <configuration>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <source>${project.java.version}</source>
+                    <target>${project.java.version}</target>
+                    <compilerVersion>${project.java.version}</compilerVersion>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+
+
+    <repositories>
+
+        <!-- Test Utils Repository -->
+        <repository>
+            <id>test-utils</id>
+            <url>https://raw.github.com/cbadenes/test-utils/mvn-repo/</url>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+            </snapshots>
+        </repository>
+
+    </repositories>
+
+</project>

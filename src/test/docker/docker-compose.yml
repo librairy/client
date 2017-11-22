@@ -1,0 +1,72 @@
+version: "2"
+services:
+ librairy-db:
+   container_name: librairy-db
+   image: cassandra:3.10
+   restart: always
+   privileged: true
+   ports:
+    - "9042:9042"
+    - "9160:9160"
+   environment:
+    - JAVA_OPTS=-XX:+AlwaysPreTouch
+    - MAX_HEAP_SIZE=1G
+    - HEAP_NEWSIZE=256M
+    - CASSANDRA_CLUSTER_NAME=librairy_cluster
+    - CASSANDRA_SEEDS=librairy-db
+   mem_limit: 2256m
+   memswap_limit: 2256m
+   command: bash -c 'if [ -z "$$(ls -A /var/lib/cassandra/)" ] ; then sleep 0; fi && /docker-entrypoint.sh cassandra -f'
+   ulimits:
+    nofile: 100000
+    memlock: -1
+    nproc: 32768
+   networks:
+    - lnet
+ librairy-bus:
+   container_name: librairy-bus
+   image: rabbitmq:3-management
+   restart: always
+   environment:
+    - RABBITMQ_DEFAULT_USER=librairy
+    - RABBITMQ_DEFAULT_VHOST=librairy
+    - RABBITMQ_DEFAULT_PASS=l1brA1ry
+   ports:
+    - "5672:5672"
+    - "15672:15672"
+   mem_limit: 512m
+   memswap_limit: 512m
+   networks:
+    - lnet
+ librairy-api:
+   container_name: librairy-api
+   image: librairy/api:1.8.8
+   restart: always
+   environment:
+    - LIBRAIRY_URI=localhost:8080/api
+    - JAVA_OPTS=-Xmx512m -Xms124m
+   ulimits:
+     nofile: 100000
+   ports:
+    - "8080:8080"
+    - "9942:4040"
+   depends_on:
+    - librairy-db
+    - librairy-bus
+   networks:
+    - lnet
+ librairy-tokenizer:
+   container_name: librairy-tokenizer
+   image: librairy/annotator-tokenizer:1.8.5.2
+   restart: always
+   environment:
+    - LIBRAIRY_URI=localhost:8080/api
+    - JAVA_OPTS=-Xmx4096m -Xms32m
+    - LIBRAIRY_TOKENIZER_MAX_PARALLEL=2
+   depends_on:
+    - librairy-db
+    - librairy-bus
+   networks:
+    - lnet
+networks:
+  lnet:
