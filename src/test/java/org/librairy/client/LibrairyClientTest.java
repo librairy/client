@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 /**
  * @author Badenes Olmedo, Carlos <cbadenes@fi.upm.es>
  */
-@Category(IntegrationTest.class)
+//@Category(IntegrationTest.class)
 public class LibrairyClientTest {
 
 
