@@ -180,7 +180,15 @@
 
     <repositories>
 
-        <!-- Test Utils Repository -->
+
+        <repository>
+            <id>librAiry-boot</id>
+            <url>https://raw.github.com/librairy/boot/mvn-repo/</url>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+            </snapshots>
+        </repository>
         <repository>
             <id>test-utils</id>
             <url>https://raw.github.com/cbadenes/test-utils/mvn-repo/</url>
