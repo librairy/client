@@ -1,7 +1,8 @@
 package org.librairy.client;
 
-import org.junit.Assert;
+import es.cbadenes.lab.test.IntegrationTest;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.librairy.client.services.LibrairyService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,7 +10,7 @@ import org.slf4j.LoggerFactory;
 /**
  * @author Badenes Olmedo, Carlos <cbadenes@fi.upm.es>
  */
-//@Category(IntegrationTest.class)
+@Category(IntegrationTest.class)
 public class LibrairyClientTest {
 
 
@@ -20,7 +21,8 @@ public class LibrairyClientTest {
 
         LibrairyClient client = new LibrairyClient();
 
-        LibrairyService service = client.connect("localhost");
+        //LibrairyService service = client.connect("localhost");
+        LibrairyService service = client.connect("librairy.linkeddata.es");
 
         client.disconnect();
 

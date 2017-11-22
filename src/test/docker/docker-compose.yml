@@ -16,6 +16,7 @@ services:
     - CASSANDRA_SEEDS=librairy-db
    mem_limit: 2256m
    memswap_limit: 2256m
+   cpuset: 0-1
    command: bash -c 'if [ -z "$$(ls -A /var/lib/cassandra/)" ] ; then sleep 0; fi && /docker-entrypoint.sh cassandra -f'
    ulimits:
     nofile: 100000
@@ -36,6 +37,7 @@ services:
     - "15672:15672"
    mem_limit: 512m
    memswap_limit: 512m
+   cpuset: 0-1
    networks:
     - lnet
  librairy-api:
@@ -45,6 +47,10 @@ services:
    environment:
     - LIBRAIRY_URI=localhost:8080/api
     - JAVA_OPTS=-Xmx512m -Xms124m
+    - LIBRAIRY_API_USERS=oeg:oeg2017
+   mem_limit: 560m
+   memswap_limit: 560m
+   cpuset: 0-1
    ulimits:
      nofile: 100000
    ports:
@@ -61,8 +67,8 @@ services:
    restart: always
    environment:
     - LIBRAIRY_URI=localhost:8080/api
-    - JAVA_OPTS=-Xmx4096m -Xms32m
-    - LIBRAIRY_TOKENIZER_MAX_PARALLEL=2
+    - JAVA_OPTS=-Xmx2048m -Xms32m
+    - LIBRAIRY_TOKENIZER_MAX_PARALLEL=1
    depends_on:
     - librairy-db
     - librairy-bus

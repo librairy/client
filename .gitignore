@@ -5,6 +5,7 @@
 *.iml
 target/
 .java-version
+output/
 
 # Log file
 *.log

@@ -2,29 +2,35 @@ package org.librairy.client.services;
 
 import com.google.common.escape.Escaper;
 import com.google.common.escape.Escapers;
+import org.apache.commons.lang.StringUtils;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
+import org.librairy.boot.model.domain.resources.Annotation;
 import org.librairy.boot.model.domain.resources.Domain;
+import org.librairy.boot.model.domain.resources.Item;
 import org.librairy.boot.model.domain.resources.Resource;
+import org.librairy.boot.storage.dao.AnnotationFilter;
+import org.librairy.boot.storage.dao.AnnotationsDao;
 import org.librairy.boot.storage.dao.DomainsDao;
 import org.librairy.boot.storage.dao.ItemsDao;
+import org.librairy.boot.storage.exception.DataNotFound;
 import org.librairy.boot.storage.generator.URIGenerator;
 import org.librairy.client.exceptions.ModelError;
 import org.librairy.client.exceptions.StorageError;
 import org.librairy.client.model.DataItem;
 import org.librairy.client.model.DataModel;
-import org.librairy.client.models.LabeledLDALearn;
+import org.librairy.client.topics.LDA;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.URLEncoder;
+import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * @author Badenes Olmedo, Carlos <cbadenes@fi.upm.es>
@@ -35,11 +41,29 @@ public class LibrairyService {
 
     private final ItemsDao itemsDao;
     private final DomainsDao domainsDao;
+    private final AnnotationsDao annotationsDao;
 
     public LibrairyService(ApplicationContext context){
         this.itemsDao       = context.getBean(ItemsDao.class);
         this.domainsDao     = context.getBean(DomainsDao.class);
+        this.annotationsDao = context.getBean(AnnotationsDao.class);
     }
+
+    public void addFolder(String folderPath, List<String> domains ) throws IOException {
+        Files.list(Paths.get(folderPath)).forEach(paper -> {
+            File file = paper.toFile();
+            try {
+                String name     = StringUtils.substringBeforeLast(file.getName(),".");
+                String content  = PdfService.toString(file);
+                newItem(new DataItem(name,content, DataItem.LANGUAGE.EN),domains);
+            } catch (IOException e) {
+                LOG.error("No file found: " + file.getAbsolutePath(),e);
+            } catch (StorageError e) {
+                LOG.error("Item not added: " + file.getAbsolutePath(),e);
+            }
+        });
+    }
+
 
     public String newItem(DataItem dataItem, List<String> domains) throws StorageError {
 
@@ -116,11 +140,15 @@ public class LibrairyService {
     }
 
 
-    public void newModel(DataModel.ALGORITHM algorithm, String domain, Integer iterations) throws ModelError {
+    public void newModel(DataModel.ALGORITHM algorithm, String domain, Optional<Integer> iterations, Optional<Integer> numTopics, Optional<Double> alpha, Optional<Double> beta, Optional<Integer> wordsPerTopic) throws ModelError {
 
         String domainId;
+        String domainUri;
         try {
             domainId = URLEncoder.encode(domain,"UTF-8");
+            domainUri = URIGenerator.fromId(Resource.Type.DOMAIN, domainId);
+            if(!domainsDao.exists(domainUri)) throw new ModelError("Domain does not exist: " + domainUri);
+
         } catch (UnsupportedEncodingException e) {
             throw new ModelError("Invalid domain name: " + domain);
         }
@@ -128,116 +156,78 @@ public class LibrairyService {
         try {
 
             //create a temp file
-            File csvFile = File.createTempFile("llda-"+domainId, ".csv");
+            File csvFile = File.createTempFile("dataset", ".csv");
 
             csvFile.mkdirs();
             csvFile.createNewFile();
             FileWriter writer = new FileWriter(csvFile);
 
-            Map<Integer,String> labels = new HashMap<>();
-            labels.put(0,"labelA labelB");
-            labels.put(1,"labelB labelC");
-            labels.put(2,"labelC labelD");
-            labels.put(3,"labelA");
+            AtomicInteger counter = new AtomicInteger();
+            Integer size = 100;
+            boolean completed = false;
+            Optional<String> offset = Optional.empty();
 
-            final Escaper escaper = Escapers.builder()
-                    .addEscape('\'',"")
-                    .addEscape('\"',"")
-                    .addEscape('('," ")
-                    .addEscape(')'," ")
-                    .addEscape('['," ")
-                    .addEscape(']'," ")
-                    .build();
+            while(!completed){
+                List<Item> items = domainsDao.listItems(domainUri, size, offset, false);
 
-            Map<Integer,String> contents = new HashMap<>();
-            contents.put(0,"EDUCATION\n" +
-                    "\n" +
-                    "* Computer Systems Technology Program, Air Force Institute of Technology (AFIT), Graduate Courses in Software Engineering and Computer Communications (24 quarter units); GPA: 3.43\n" +
-                    "\n" +
-                    "* BS, Mathematics/Computer Science, University of California, Los Angeles (UCLA), GPA: 3.57; Major GPA: 3.62\n" +
-                    "\n" +
-                    "SPECIALIZED TRAINING\n" +
-                    "\n" +
-                    "* Database Administration, Performance Tuning, and Benchmarking with Oracle7; Oracle Corporation.\n" +
-                    "\n" +
-                    "* Software Requirements Engineering and Management Course; Computer Applications International Corporation.\n" +
-                    "\n" +
-                    "* X.400 Messaging and Allied Communications Procedures-123 Profile; ComTechnologies, Inc.\n" +
-                    "\n" +
-                    "* GOSIP LAN Operating System Network Administration; ETC, Inc.\n" +
-                    "\n" +
-                    "* Interactive UNIX System V r4 (POSIX) System Administration; ETC, Inc.\n" +
-                    "\n" +
-                    "* Effective Briefing Techniques and Technical Presentations; William French and Associates, Inc.\n" +
-                    "\n" +
-                    "* Transmission Control Protocol/Internet Protocol (TCP/IP); Technology Systems Institute.\n" +
-                    "\n" +
-                    "* LAN Interconnection Using Bridges, Routers, and Gateways; Information Systems Institute.\n" +
-                    "\n" +
-                    "* OSI X.400/X.500 Messaging and Directory Service Protocols; Communication Technologies, Inc.\n" +
-                    "\n" +
-                    "* US Army Signal Officer Advanced Course, US Army Signal Center, Georgia; Honor Graduate.\n" +
-                    "\n" +
-                    "CERTIFICATION, HONORS, & PROFESSIONAL AFFILIATIONS");
-            contents.put(1,"Business Consultants, Inc., Washington, DC 1990-1993\n" +
-                    "\n" +
-                    "* Provided technical consulting services to the Smithsonian Institute’s Information Technology Services Group, Amnesty International, and internal research and development initiatives.\n" +
-                    "\n" +
-                    "* Consolidated and documented the Smithsonian Laboratory's Testing, Demonstration, and Training databases onto a single server, maximizing the use of the laboratory's computing resources.\n" +
-                    "\n" +
-                    "* Brought the Smithsonian Laboratory on-line with the Internet.\n" +
-                    "\n" +
-                    "* Successfully integrated and delivered to Amnesty International an $80,000 HP 9000/750 Server consisting of 8 Gigabytes of disk space and 9 software systems that required extensive porting work and documentation.");
-            contents.put(2,"Designed and managed the development of an enterprise-level client/server automated auditing application for a major financial management company migrating from mainframe computers, db2, and FOCUS to a workgroup oriented, client/server architecture involving Windows for Workgroups, Windows NT Advanced Server, Microsoft SQL Server, Oracle7, and UNIX.\n" +
-                    "\n" +
-                    "* Designed an enterprise level, high performance, mission-critical, client/server database system incorporating symmetric multiprocessing computers (SMP), Oracle7’s Parallel Server, Tuxedo’s on-line transaction processing (OLTP) monitor, and redundant array of inexpensive disks (RAID) technology.\n" +
-                    "\n" +
-                    "* Conducted extensive trade studies of a large number of vendors that offer leading-edge technologies; these studies identified proven (low-risk) implementations of SMP and RDBMS systems that met stringent performance and availability criteria.\n" +
-                    "\n");
-            contents.put(3,"Computer Engineering Corporation, Los Angeles, CA, 1993-Present\n" +
-                    "\n" +
-                    "* Provide systems engineering, software engineering, technical consulting, and marketing services as a member of the Systems Integration Division of a software engineering consulting company.\n" +
-                    "\n" +
-                    "* Designed and managed the development of an enterprise-level client/server automated auditing application for a major financial management company migrating from mainframe computers, db2, and FOCUS to a workgroup oriented, client/server architecture involving Windows for Workgroups, Windows NT Advanced Server, Microsoft SQL Server, Oracle7, and UNIX.\n" +
-                    "\n" +
-                    "* Designed an enterprise level, high performance, mission-critical, client/server database system incorporating symmetric multiprocessing computers (SMP), Oracle7’s Parallel Server, Tuxedo’s on-line transaction processing (OLTP) monitor, and redundant array of inexpensive disks (RAID) technology.\n" +
-                    "\n" +
-                    "* Conducted extensive trade studies of a large number of vendors that offer leading-edge technologies; these studies identified proven (low-risk) implementations of SMP and RDBMS systems that met stringent performance and availability criteria.\n" +
-                    "\n" +
-                    "Systems Analyst\n" +
-                    "\n" +
-                    "Business Consultants, Inc., Washington, DC 1990-1993\n" +
-                    "\n" +
-                    "* Provided technical consulting services to the Smithsonian Institute’s Information Technology Services Group, Amnesty International, and internal research and development initiatives.\n" +
-                    "\n" +
-                    "* Consolidated and documented the Smithsonian Laboratory's Testing, Demonstration, and Training databases onto a single server, maximizing the use of the laboratory's computing resources.\n" +
-                    "\n" +
-                    "* Brought the Smithsonian Laboratory on-line with the Internet.\n" +
-                    "\n" +
-                    "* Successfully integrated and delivered to Amnesty International an $80,000 HP 9000/750 Server consisting of 8 Gigabytes of disk space and 9 software systems that required extensive porting work and documentation.\n" +
-                    "\n" +
-                    "Automated Data Processor\n" +
-                    "\n" +
-                    "US Army Infantry, Germany 1986-1990\n" +
-                    "\n" +
-                    "* Analyzed problems and ADP processes; designed, tested, and implemented software and hardware systems for an organizational operations center.\n" +
-                    "\n" +
-                    "* Supervised the maintenance, deployment, installation, and operation of a battalion's personnel system that monitored and controlled up to 12 platoons in a fast-paced, technically demanding environment.\n" +
-                    "\n" +
-                    "* Designed a maintenance reporting program that convert");
+                completed = items.size() < size;
+                offset = Optional.of(items.get(items.size()-1).getUri());
 
-            for(int i=0;i<100;i++){
-                String id       = "text" + i;
-                String label    = labels.get(i%labels.size());
-                String content  = contents.get(i%contents.size());
-                writer.write(id+","+label+",\""+escaper.escape(content)+"\"\n");
+                for(Item item: items){
+                    counter.incrementAndGet();
+                    String content;
+                    try {
+                        List<Annotation> annotations = annotationsDao.getByResource(item.getUri(), Optional.of(AnnotationFilter.byType("lemma").build()));
+                        if (annotations.isEmpty()) throw new DataNotFound("annotation is empty");
+                        content = annotations.get(0).getValue().get("content");
+                    } catch (DataNotFound dataNotFound) {
+                        LOG.warn("No annotation found for item: " + item.getUri());
+                        Item dataItem = itemsDao.get(item.getUri(), true).get().asItem();
+                        content = TextService.escape(dataItem.getContent());
+                    }
+                    writer.write(content+"\n");
+                }
             }
 
             writer.close();
 
+
             LOG.debug("created csv file: " + csvFile.getAbsolutePath());
 
-            LabeledLDALearn.apply(csvFile.getAbsolutePath(), domainId ,iterations);
+            File folder = Paths.get("output", "models","lda",domainId).toFile();
+            folder.mkdirs();
+
+            File gzFile = new File(folder.getAbsolutePath()+File.separator+"dataset.csv.gz");
+            gzFile.createNewFile();
+
+            gzipIt(csvFile.getAbsolutePath(), gzFile.getAbsolutePath());
+
+
+            Integer iterationsValue = iterations.isPresent()? iterations.get() : 1000;
+            Double alphaValue   = alpha.isPresent()? alpha.get() : 0.1;
+            Double betaValue    = beta.isPresent()? beta.get() : 0.01;
+            Integer topicsValue = numTopics.isPresent()? numTopics.get() : Double.valueOf(2*Math.sqrt(counter.get()/2)).intValue();
+            Integer wordsValue  = wordsPerTopic.isPresent()? wordsPerTopic.get() : 10;
+
+            LOG.info("Ready to train a " + algorithm + " model with " + topicsValue + " topics (alpha="+alphaValue+"/beta="+betaValue+") in " + iterationsValue + " iterations" );
+            List<String> args = Arrays.asList(new String[]{
+                    "-est",
+                    "-alpha",String.valueOf(alphaValue),
+                    "-beta",String.valueOf(betaValue),
+                    "-ntopics",String.valueOf(topicsValue),
+                    "-niters",String.valueOf(iterationsValue),
+                    "-twords",String.valueOf(wordsValue),
+                    "-dir",folder.getAbsolutePath(),
+                    "-dfile",gzFile.getName(),
+                    "-model","model"
+            });
+
+
+
+            LDA.main(args.toArray(new String[args.size()]));
+
+
+
         } catch (IOException e) {
             LOG.error("Error",e);
             throw new ModelError("Error creating temporal files",e);
@@ -249,5 +239,34 @@ public class LibrairyService {
 
     }
 
+
+    public void gzipIt(String sourceFile, String gzFile){
+
+        byte[] buffer = new byte[1024];
+
+        try{
+
+            GZIPOutputStream gzos =
+                    new GZIPOutputStream(new FileOutputStream(gzFile));
+
+            FileInputStream in =
+                    new FileInputStream(sourceFile);
+
+            int len;
+            while ((len = in.read(buffer)) > 0) {
+                gzos.write(buffer, 0, len);
+            }
+
+            in.close();
+
+            gzos.finish();
+            gzos.close();
+
+            System.out.println("Done");
+
+        }catch(IOException ex){
+            ex.printStackTrace();
+        }
+    }
 
 }
