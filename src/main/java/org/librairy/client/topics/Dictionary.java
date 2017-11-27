@@ -27,17 +27,12 @@
  */
 package org.librairy.client.topics;
 
+import gnu.trove.map.hash.TIntObjectHashMap;
+import gnu.trove.map.hash.TObjectIntHashMap;
+import org.librairy.client.services.FileService;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
-
-import gnu.trove.map.hash.TObjectIntHashMap;
-import gnu.trove.map.hash.TIntObjectHashMap;
 
 public class Dictionary {
     public TObjectIntHashMap<String> word2id;
@@ -105,9 +100,8 @@ public class Dictionary {
     public boolean readWordMap(String wordMapFile)
     {
         try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(
-                        new GZIPInputStream(
-                            new FileInputStream(wordMapFile)), "UTF-8"));
+            BufferedReader reader = FileService.reader(wordMapFile);
+
             String line;
 
             for (int i = 0; (line = reader.readLine()) != null; i++) {
@@ -129,9 +123,7 @@ public class Dictionary {
     public boolean writeWordMap(String wordMapFile)
     {
         try {
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-                        new GZIPOutputStream(
-                            new FileOutputStream(wordMapFile)), "UTF-8"));
+            BufferedWriter writer = FileService.writer(wordMapFile);
 
             //write word to id
             for (int i = 0; i < id2word.size(); i++) {

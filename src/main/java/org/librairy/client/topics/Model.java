@@ -27,23 +27,17 @@
  */
 package org.librairy.client.topics;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.map.hash.TIntObjectHashMap;
+import org.librairy.client.model.DataModel;
+import org.librairy.client.model.DataTopic;
+import org.librairy.client.model.DataWord;
+import org.librairy.client.services.FileService;
+
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.StringTokenizer;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
-
-import gnu.trove.list.array.TIntArrayList;
-import gnu.trove.map.hash.TIntObjectHashMap;
 
 public class Model {	
 
@@ -51,12 +45,12 @@ public class Model {
     //	Class Variables
     //---------------------------------------------------------------
 
-    public static String tassignSuffix = ".tassign.gz";	 // suffix for topic assignment file
-    public static String thetaSuffix   = ".theta.gz";    // suffix for theta (topic - document distribution) file
-    public static String phiSuffix     = ".phi.gz";      // suffix for phi file (topic - word distribution) file
-    public static String othersSuffix  = ".others.gz"; 	 // suffix for containing other parameters
-    public static String twordsSuffix  = ".twords.gz";	 // suffix for file containing words-per-topics
-    public static String wordMapSuffix  = ".wordmap.gz"; // suffix for file containing word to id map
+    public static String tassignSuffix = ".words.txt";	 // suffix for topic assignment file
+    public static String thetaSuffix   = ".documents.txt";    // suffix for theta (topic - document distribution) file
+    public static String phiSuffix     = ".phi.txt";      // suffix for phi file (topic - word distribution) file
+    public static String othersSuffix  = ".parameters.txt"; 	 // suffix for containing other parameters
+    public static String twordsSuffix  = ".topics.txt";	 // suffix for file containing words-per-topics
+    public static String wordMapSuffix  = ".vocabulary.txt"; // suffix for file containing word to id map
 
     //---------------------------------------------------------------
     //	Model Parameters and Variables
@@ -147,7 +141,12 @@ public class Model {
         }
 
         // read in data
-        data.readDataSet(dir + File.separator + dfile, unlabeled);
+
+        String filePath = dir + File.separator + dfile;
+        if (!new File(filePath).exists()){
+            filePath = dfile;
+        }
+        data.readDataSet( filePath, unlabeled);
     }
 
     //---------------------------------------------------------------
@@ -353,15 +352,21 @@ public class Model {
     }
     public boolean saveModel(String modelPrefix)
     {
-        if (!saveModelTAssign(dir + File.separator + modelPrefix + modelName + tassignSuffix)) {
+        String baseDir = dir + File.separator + modelPrefix;
+
+        if (modelPrefix.startsWith(File.separator)){
+            baseDir = modelPrefix;
+        }
+
+        if (!saveModelTAssign(baseDir + modelName + tassignSuffix)) {
             return false;
         }
 
-        if (!saveModelOthers(dir + File.separator + modelPrefix + modelName + othersSuffix)) {
+        if (!saveModelOthers(baseDir + modelName + othersSuffix)) {
             return false;
         }
 
-        if (!saveModelTheta(dir + File.separator + modelPrefix + modelName + thetaSuffix)) {
+        if (!saveModelTheta(baseDir + modelName + thetaSuffix)) {
             return false;
         }
 
@@ -370,12 +375,12 @@ public class Model {
         //}
 
         if (twords > 0) {
-            if (!saveModelTwords(dir + File.separator + modelPrefix + modelName + twordsSuffix)) {
+            if (!saveModelTwords(baseDir + modelName + twordsSuffix)) {
                 return false;
             }
         }
 
-        if (!data.localDict.writeWordMap(dir + File.separator + modelPrefix + modelName + wordMapSuffix)) {
+        if (!data.localDict.writeWordMap(baseDir + modelName + wordMapSuffix)) {
             return false;
         }
 
@@ -389,11 +394,8 @@ public class Model {
         int i, j;
 
         try{
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-                        new GZIPOutputStream(
-                            new FileOutputStream(filename)), "UTF-8"));
+            BufferedWriter writer = FileService.writer(filename);
 
-            //write docs with topic assignments for words
             for (i = 0; i < data.M; i++) {
                 for (j = 0; j < data.docs.get(i).length; ++j) {
                     writer.write(data.docs.get(i).words[j] + ":" + z[i].get(j) + " ");
@@ -417,8 +419,10 @@ public class Model {
     public boolean saveModelTheta(String filename) {
         try{
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-                        new GZIPOutputStream(
-                            new FileOutputStream(filename)), "UTF-8"));
+//                        new GZIPOutputStream(
+                    new FileOutputStream(filename)
+//            )
+                    , "UTF-8"));
 
             for (int i = 0; i < M; i++) {
                 for (int j = 0; j < K; j++) {
@@ -445,8 +449,10 @@ public class Model {
     {
         try {
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-                        new GZIPOutputStream(
-                            new FileOutputStream(filename)), "UTF-8"));
+//                        new GZIPOutputStream(
+                    new FileOutputStream(filename)
+//            )
+                    , "UTF-8"));
 
             for (int i = 0; i < K; i++) {
                 for (int j = 0; j < V; j++) {
@@ -472,8 +478,10 @@ public class Model {
     public boolean saveModelOthers(String filename){
         try{
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-                        new GZIPOutputStream(
-                            new FileOutputStream(filename)), "UTF-8"));
+//                        new GZIPOutputStream(
+                    new FileOutputStream(filename)
+//            )
+                    , "UTF-8"));
 
             writer.write("alpha=" + alpha + "\n");
             writer.write("beta=" + beta + "\n");
@@ -498,8 +506,10 @@ public class Model {
     public boolean saveModelTwords(String filename){
         try{
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-                        new GZIPOutputStream(
-                            new FileOutputStream(filename)), "UTF-8"));
+//                        new GZIPOutputStream(
+                    new FileOutputStream(filename)
+//            )
+                    , "UTF-8"));
 
             if (twords > V){
                 twords = V;
@@ -536,6 +546,44 @@ public class Model {
         return true;
     }
 
+    public DataModel getDataModel(){
+
+        DataModel dataModel = new DataModel();
+
+        if (twords > V){
+            twords = V;
+        }
+
+        for (int k = 0; k < K; k++){
+            DataTopic dataTopic = new DataTopic();
+            dataTopic.setId(String.valueOf(k));
+            ArrayList<Pair> wordsProbsList = new ArrayList<Pair>();
+            for (int w = 0; w < V; w++){
+                Pair p = new Pair(w, phi[k][w], false);
+
+                wordsProbsList.add(p);
+            }//end foreach word
+
+            Collections.sort(wordsProbsList);
+
+            for (int i = 0; i < twords; i++){
+                if (data.localDict.contains((Integer)wordsProbsList.get(i).first)){
+                    String word = data.localDict.getWord((Integer)wordsProbsList.get(i).first);
+
+                    DataWord dataWord = new DataWord();
+                    dataWord.setValue(word);
+                    dataWord.setScore(Double.valueOf(String.valueOf(wordsProbsList.get(i).second)));
+
+                    dataTopic.add(dataWord);
+                }
+            }
+            dataModel.add(dataTopic);
+        } //end foreach topic
+
+
+        return dataModel;
+    }
+
     /**
      * Load saved model
      */
@@ -562,8 +610,10 @@ public class Model {
     protected boolean readOthersFile(String otherFile){
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(
-                        new GZIPInputStream(
-                            new FileInputStream(otherFile)), "UTF-8"));
+//                        new GZIPInputStream(
+                            new FileInputStream(otherFile)
+//                        )
+                    , "UTF-8"));
             String line;
             while((line = reader.readLine()) != null){
                 StringTokenizer tknr = new StringTokenizer(line,"= \t\r\n");
@@ -616,8 +666,10 @@ public class Model {
         try {
             int i,j;
             BufferedReader reader = new BufferedReader(new InputStreamReader(
-                        new GZIPInputStream(
-                            new FileInputStream(tassignFile)), "UTF-8"));
+//                        new GZIPInputStream(
+                            new FileInputStream(tassignFile)
+//            )
+                    , "UTF-8"));
 
             String line;
             z = new TIntArrayList[M];			

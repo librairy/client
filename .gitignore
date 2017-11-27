@@ -6,6 +6,7 @@
 target/
 .java-version
 output/
+input.txt.*
 
 # Log file
 *.log

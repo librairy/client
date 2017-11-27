@@ -27,19 +27,17 @@
  */
 package org.librairy.client.topics;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.zip.GZIPInputStream;
-
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.set.hash.TIntHashSet;
+import org.librairy.client.services.FileService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.ArrayList;
 
 public class LDADataset {
 
@@ -161,9 +159,8 @@ public class LDADataset {
      */
     public boolean readDataSet(String filename, boolean unlabeled) throws FileNotFoundException, IOException
     {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(
-                    new GZIPInputStream(
-                        new FileInputStream(filename)), "UTF-8"));
+        BufferedReader reader= FileService.reader(filename);
+
         try {
             String line;
             while ((line = reader.readLine()) != null) {

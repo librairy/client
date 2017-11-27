@@ -11,8 +11,8 @@
                              http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.librairy</groupId>
-    <artifactId>client</artifactId>
-    <version>1.0</version>
+    <artifactId>librairy-client</artifactId>
+    <version>1.8</version>
     <packaging>jar</packaging>
     <name>librairy-client</name>
     <description>Connect to librAIry</description>
@@ -54,8 +54,9 @@
 		<surefire.junit.plugin.version>2.12</surefire.junit.plugin.version>
 
         <!-- Project Dependencies -->
-        <librairy.version>1.8.5.3</librairy.version>
+        <librairy.version>1.8.5.7</librairy.version>
         <pdfbox.version>2.0.3</pdfbox.version>
+        <unirest.version>1.4.9</unirest.version>
 
         <!-- Test Dependencies -->
         <junit.version>4.12</junit.version>
@@ -76,6 +77,12 @@
                 <groupId>org.apache.pdfbox</groupId>
                 <artifactId>pdfbox</artifactId>
                 <version>${pdfbox.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mashape.unirest</groupId>
+                <artifactId>unirest-java</artifactId>
+                <version>${unirest.version}</version>
             </dependency>
 
             <!-- Unit tests Libraries -->
@@ -106,6 +113,12 @@
             <groupId>args4j</groupId>
             <artifactId>args4j</artifactId>
             <version>2.0.6</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mashape.unirest</groupId>
+            <artifactId>unirest-java</artifactId>
+            <version>${unirest.version}</version>
         </dependency>
 
 
@@ -174,6 +187,48 @@
                 </executions>
             </plugin>
 
+            <!-- Github Deploy -->
+            <plugin>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>2.8.1</version>
+                <configuration>
+                    <altDeploymentRepository>internal.repo::default::file://${project.build.directory}/mvn-repo</altDeploymentRepository>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-site-plugin</artifactId>
+                <version>3.3</version>
+                <configuration>
+                    <skipDeploy>true</skipDeploy>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>com.github.github</groupId>
+                <artifactId>site-maven-plugin</artifactId>
+                <version>0.12</version>
+                <executions>
+                    <execution>
+                        <id>jar-deploy</id>
+                        <goals>
+                            <goal>site</goal>
+                        </goals>
+                        <phase>deploy</phase>
+                        <configuration>
+                            <message>Library of ${project.version}</message>
+                            <noJekyll>true</noJekyll>
+                            <outputDirectory>${project.build.directory}/mvn-repo</outputDirectory>
+                            <branch>refs/heads/mvn-repo</branch>
+                            <includes><include>**/*</include></includes>
+                            <merge>true</merge>
+                            <repositoryName>client</repositoryName>
+                            <repositoryOwner>librairy</repositoryOwner>
+                            <server>github</server>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
         </plugins>
     </build>
 
@@ -199,5 +254,14 @@
         </repository>
 
     </repositories>
+
+
+    <distributionManagement>
+        <repository>
+            <id>internal.repo</id>
+            <name>Temporary Staging Repository</name>
+            <url>file://${project.build.directory}/mvn-repo</url>
+        </repository>
+    </distributionManagement>
 
 </project>

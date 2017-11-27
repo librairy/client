@@ -28,12 +28,15 @@
 
 package org.librairy.client.topics;
 
+import lombok.Getter;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public class Estimator
 {
     // output model
+    @Getter
     protected Model trnModel;
     LDACmdOption option;
 
