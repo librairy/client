@@ -111,7 +111,7 @@
         <dependency>
             <groupId>org.librairy</groupId>
             <artifactId>librairy-metrics</artifactId>
-            <version>1.20</version>
+            <version>1.21</version>
         </dependency>
 
         <dependency>
