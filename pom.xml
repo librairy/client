@@ -54,7 +54,7 @@
 		<surefire.junit.plugin.version>2.12</surefire.junit.plugin.version>
 
         <!-- Project Dependencies -->
-        <librairy.version>1.8.5.7</librairy.version>
+        <librairy.version>1.8.6.2</librairy.version>
         <pdfbox.version>2.0.3</pdfbox.version>
         <unirest.version>1.4.9</unirest.version>
 
@@ -108,6 +108,11 @@
             <artifactId>librairy-boot</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.librairy</groupId>
+            <artifactId>librairy-metrics</artifactId>
+            <version>1.21</version>
+        </dependency>
 
         <dependency>
             <groupId>args4j</groupId>

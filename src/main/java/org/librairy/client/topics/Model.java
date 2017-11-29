@@ -29,14 +29,16 @@ package org.librairy.client.topics;
 
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
+import org.librairy.boot.model.domain.resources.Shape;
+import org.librairy.boot.model.domain.resources.TopicDescription;
+import org.librairy.boot.model.domain.resources.WordDescription;
 import org.librairy.client.model.DataModel;
-import org.librairy.client.model.DataTopic;
-import org.librairy.client.model.DataWord;
 import org.librairy.client.services.FileService;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.StringTokenizer;
 
 public class Model {	
@@ -418,11 +420,7 @@ public class Model {
      */
     public boolean saveModelTheta(String filename) {
         try{
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-//                        new GZIPOutputStream(
-                    new FileOutputStream(filename)
-//            )
-                    , "UTF-8"));
+            BufferedWriter writer = FileService.writer(filename);
 
             for (int i = 0; i < M; i++) {
                 for (int j = 0; j < K; j++) {
@@ -448,11 +446,7 @@ public class Model {
     public boolean saveModelPhi(String filename)
     {
         try {
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-//                        new GZIPOutputStream(
-                    new FileOutputStream(filename)
-//            )
-                    , "UTF-8"));
+            BufferedWriter writer = FileService.writer(filename);
 
             for (int i = 0; i < K; i++) {
                 for (int j = 0; j < V; j++) {
@@ -477,11 +471,7 @@ public class Model {
      */
     public boolean saveModelOthers(String filename){
         try{
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-//                        new GZIPOutputStream(
-                    new FileOutputStream(filename)
-//            )
-                    , "UTF-8"));
+            BufferedWriter writer = FileService.writer(filename);
 
             writer.write("alpha=" + alpha + "\n");
             writer.write("beta=" + beta + "\n");
@@ -505,11 +495,7 @@ public class Model {
      */
     public boolean saveModelTwords(String filename){
         try{
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-//                        new GZIPOutputStream(
-                    new FileOutputStream(filename)
-//            )
-                    , "UTF-8"));
+            BufferedWriter writer = FileService.writer(filename);
 
             if (twords > V){
                 twords = V;
@@ -555,7 +541,7 @@ public class Model {
         }
 
         for (int k = 0; k < K; k++){
-            DataTopic dataTopic = new DataTopic();
+            TopicDescription dataTopic = new TopicDescription();
             dataTopic.setId(String.valueOf(k));
             ArrayList<Pair> wordsProbsList = new ArrayList<Pair>();
             for (int w = 0; w < V; w++){
@@ -570,7 +556,7 @@ public class Model {
                 if (data.localDict.contains((Integer)wordsProbsList.get(i).first)){
                     String word = data.localDict.getWord((Integer)wordsProbsList.get(i).first);
 
-                    DataWord dataWord = new DataWord();
+                    WordDescription dataWord = new WordDescription();
                     dataWord.setValue(word);
                     dataWord.setScore(Double.valueOf(String.valueOf(wordsProbsList.get(i).second)));
 
@@ -579,6 +565,25 @@ public class Model {
             }
             dataModel.add(dataTopic);
         } //end foreach topic
+
+
+        // shapes
+
+        for (int i = 0; i < M; i++) {
+            int documentId = i;
+            Shape shape = new Shape();
+            shape.setUri(String.valueOf(i));
+            List<Double> vector = new ArrayList<>();
+            for (int j = 0; j < K; j++) {
+                if (theta[i][j] > 0) {
+                    int topicId = j;
+                    double score = theta[i][j];
+                    vector.add(score);
+                }
+            }
+            dataModel.add(shape);
+        }
+
 
 
         return dataModel;

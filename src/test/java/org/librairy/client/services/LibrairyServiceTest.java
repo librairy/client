@@ -13,15 +13,15 @@ import org.librairy.client.exceptions.ModelError;
 import org.librairy.client.exceptions.StorageError;
 import org.librairy.client.model.DataItem;
 import org.librairy.client.model.DataModel;
+import org.librairy.client.model.TopicDistance;
+import org.librairy.metrics.distance.ExtendedKendallsTauDistance;
+import org.librairy.metrics.distance.ExtendedKendallsTauSimilarity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * @author Badenes Olmedo, Carlos <cbadenes@fi.upm.es>
@@ -50,13 +50,14 @@ public class LibrairyServiceTest {
     @Test
     public void loadPDFTest() throws IOException {
 
-        Map<String, String> parameters = ImmutableMap.of(
-                "lda.optimizer","manual",
-                "lda.alpha","0.1",
-                "lda.beta","0.01",
-                "lda.topics","6",
-                "lda.max.iterations","100"
-                );
+        Map<String, String> parameters = new HashMap<>();
+        parameters.put("lda.optimizer","manual");
+        parameters.put("lda.alpha","0.1");
+        parameters.put("lda.beta","0.01");
+        parameters.put("lda.topics","6");
+        parameters.put("lda.max.iterations","100");
+        parameters.put("lda.stopwords","figure,section,example");
+
 
         service.addFolder("/Users/cbadenes/Documents/Academic/DoctoradoIA/congresos/2017/KCap/tutorial/papers/K-CAP 2015 camera ready papers - corpus",Arrays.asList(new String[]{"kcap","kcap2015"}), Optional.of(parameters));
         service.addFolder("/Users/cbadenes/Documents/Academic/DoctoradoIA/congresos/2017/KCap/tutorial/papers/K-CAP 2017 camera ready papers - corpus",Arrays.asList(new String[]{"kcap","kcap2017"}), Optional.of(parameters));
@@ -74,7 +75,8 @@ public class LibrairyServiceTest {
                     Optional.empty(),
                     Optional.empty(),
                     Optional.empty(),
-                    Optional.empty());
+                    Optional.empty(),
+                    Optional.of(10));
         } catch (ModelError modelError) {
             Assert.fail(modelError.getMessage());
         }
@@ -89,6 +91,25 @@ public class LibrairyServiceTest {
                     input,
                     Optional.empty(),
                     Optional.empty());
+        } catch (ModelError modelError) {
+            Assert.fail(modelError.getMessage());
+        }
+    }
+
+
+    @Test
+    public void comparisonModelsTest(){
+        try {
+            service.compare("kcap2015","kcap2017", new ExtendedKendallsTauSimilarity(), Optional.of(25));
+        } catch (ModelError modelError) {
+            Assert.fail(modelError.getMessage());
+        }
+    }
+
+    @Test
+    public void similaritiesTest(){
+        try {
+            service.similarities("kcap", Optional.empty());
         } catch (ModelError modelError) {
             Assert.fail(modelError.getMessage());
         }

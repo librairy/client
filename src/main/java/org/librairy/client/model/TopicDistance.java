@@ -6,9 +6,9 @@ import lombok.Data;
  * @author Badenes Olmedo, Carlos <cbadenes@fi.upm.es>
  */
 @Data
-public class DataWord {
+public class TopicDistance {
 
-    String value;
-    Double score;
-
+    public enum ALGORITHM{
+        RANK, EXTKENDALLSTAU;
+    }
 }
