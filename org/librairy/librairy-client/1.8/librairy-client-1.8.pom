@@ -54,7 +54,7 @@
 		<surefire.junit.plugin.version>2.12</surefire.junit.plugin.version>
 
         <!-- Project Dependencies -->
-        <librairy.version>1.8.6.1</librairy.version>
+        <librairy.version>1.8.6.2</librairy.version>
         <pdfbox.version>2.0.3</pdfbox.version>
         <unirest.version>1.4.9</unirest.version>
 
