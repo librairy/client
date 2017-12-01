@@ -12,7 +12,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.librairy</groupId>
     <artifactId>librairy-client</artifactId>
-    <version>1.8</version>
+    <version>1.8.1</version>
     <packaging>jar</packaging>
     <name>librairy-client</name>
     <description>Connect to librAIry</description>
@@ -54,7 +54,6 @@
 		<surefire.junit.plugin.version>2.12</surefire.junit.plugin.version>
 
         <!-- Project Dependencies -->
-        <librairy.version>1.8.6.2</librairy.version>
         <pdfbox.version>2.0.3</pdfbox.version>
         <unirest.version>1.4.9</unirest.version>
 
@@ -66,12 +65,6 @@
 
     <dependencyManagement>
         <dependencies>
-
-            <dependency>
-                <groupId>org.librairy</groupId>
-                <artifactId>librairy-boot</artifactId>
-                <version>${librairy.version}</version>
-            </dependency>
 
             <dependency>
                 <groupId>org.apache.pdfbox</groupId>
@@ -105,19 +98,38 @@
 
         <dependency>
             <groupId>org.librairy</groupId>
-            <artifactId>librairy-boot</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.librairy</groupId>
             <artifactId>librairy-metrics</artifactId>
             <version>1.21</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.spark</groupId>
+                    <artifactId>spark-core_2.10</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.spark</groupId>
+                    <artifactId>spark-mllib_2.10</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.uma.jmetal</groupId>
+                    <artifactId>jmetal-algorithm</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
             <groupId>args4j</groupId>
             <artifactId>args4j</artifactId>
             <version>2.0.6</version>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>2.6</version>
         </dependency>
 
         <dependency>
@@ -242,8 +254,8 @@
 
 
         <repository>
-            <id>librAiry-boot</id>
-            <url>https://raw.github.com/librairy/boot/mvn-repo/</url>
+            <id>librAiry-metric</id>
+            <url>https://raw.github.com/librairy/metric/mvn-repo/</url>
             <snapshots>
                 <enabled>true</enabled>
                 <updatePolicy>always</updatePolicy>

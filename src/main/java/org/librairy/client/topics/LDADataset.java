@@ -169,7 +169,7 @@ public class LDADataset {
             setM(docs.size());
 
             // debug output
-            LOG.info("Dataset loaded: ");
+            LOG.info("Dataset loaded from " + filename + " : ");
             LOG.info("\tDocuments:" + M);
             LOG.info("\tVocabulary:" + V);
 

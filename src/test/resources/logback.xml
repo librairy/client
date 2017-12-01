@@ -17,7 +17,7 @@
     <logger name="com.datastax" level="ERROR"/>
     <logger name="org.librairy" level="ERROR"/>
     <logger name="org.apache.pdfbox" level="ERROR"/>
-    <logger name="org.librairy.client" level="DEBUG"/>
+    <logger name="org.librairy" level="INFO"/>
     <logger name="org.springframework.data.neo4j.mapping.Neo4jPersistentProperty" level="ERROR"/>
 
     <root level="WARN">

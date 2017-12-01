@@ -29,12 +29,16 @@
 package org.librairy.client.topics;
 
 import lombok.Getter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public class Estimator
 {
+    private static final Logger LOG = LoggerFactory.getLogger(Estimator.class);
+
     // output model
     @Getter
     protected Model trnModel;
@@ -57,7 +61,7 @@ public class Estimator
     public void estimate()
     {
         for (int startIter = ++trnModel.liter; trnModel.liter <= startIter - 1 + trnModel.niters; trnModel.liter++){
-            System.out.format("%6d", trnModel.liter);
+            LOG.debug(String.valueOf(trnModel.liter));
 
             // for all z_i
             for (int m = 0; m < trnModel.M; m++){				
@@ -74,13 +78,13 @@ public class Estimator
                 trnModel.updateParams();
             }
 
-            System.out.print("\b\b\b\b\b\b");
+            LOG.debug(("\b\b\b\b\b\b"));
         }// end iterations
         trnModel.liter--;
 
 
 
-        System.out.println("\nSaving the final model!");
+        LOG.debug("\nSaving the final model!");
         trnModel.saveModel();
     }
 

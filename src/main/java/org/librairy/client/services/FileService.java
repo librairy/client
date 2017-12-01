@@ -1,5 +1,9 @@
 package org.librairy.client.services;
 
+import org.librairy.client.topics.Inferencer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.*;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -8,6 +12,8 @@ import java.util.zip.GZIPOutputStream;
  * @author Badenes Olmedo, Carlos <cbadenes@fi.upm.es>
  */
 public class FileService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(FileService.class);
 
     public static void gzipIt(String sourceFile, String gzFile){
 
@@ -31,7 +37,7 @@ public class FileService {
             gzos.finish();
             gzos.close();
 
-            System.out.println("Done");
+            LOG.debug("Done");
 
         }catch(IOException ex){
             ex.printStackTrace();

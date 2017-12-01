@@ -29,11 +29,13 @@ package org.librairy.client.topics;
 
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntObjectHashMap;
-import org.librairy.boot.model.domain.resources.Shape;
-import org.librairy.boot.model.domain.resources.TopicDescription;
-import org.librairy.boot.model.domain.resources.WordDescription;
 import org.librairy.client.model.DataModel;
+import org.librairy.client.model.Shape;
+import org.librairy.client.model.Topic;
+import org.librairy.client.model.Word;
 import org.librairy.client.services.FileService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -41,7 +43,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.StringTokenizer;
 
-public class Model {	
+public class Model {
+
+    private static final Logger LOG = LoggerFactory.getLogger(Model.class);
 
     //---------------------------------------------------------------
     //	Class Variables
@@ -166,17 +170,17 @@ public class Model {
             z = new TIntArrayList[M];
         } else {
             if (!loadModel()) {
-                System.out.println("Fail to load word-topic assignment file of the model!"); 
+                LOG.debug("Fail to load word-topic assignment file of the model!");
                 return false;
             }
 
             // debug output
-            System.out.println("Model loaded:");
-            System.out.println("\talpha:" + alpha);
-            System.out.println("\tbeta:" + beta);
-            System.out.println("\tK:" + K);
-            System.out.println("\tM:" + M);
-            System.out.println("\tV:" + V);
+            LOG.debug("Model loaded:");
+            LOG.debug("\talpha:" + alpha);
+            LOG.debug("\tbeta:" + beta);
+            LOG.debug("\tK:" + K);
+            LOG.debug("\tM:" + M);
+            LOG.debug("\tV:" + V);
         }
 
         p = new double[K];
@@ -408,7 +412,7 @@ public class Model {
             writer.close();
         }
         catch (Exception e) {
-            System.out.println("Error while saving model tassign: " + e.getMessage());
+            LOG.debug("Error while saving model tassign: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -433,7 +437,7 @@ public class Model {
             writer.close();
         }
         catch (Exception e){
-            System.out.println("Error while saving topic distribution file for this model: " + e.getMessage());
+            LOG.debug("Error while saving topic distribution file for this model: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -459,7 +463,7 @@ public class Model {
             writer.close();
         }
         catch (Exception e) {
-            System.out.println("Error while saving word-topic distribution:" + e.getMessage());
+            LOG.debug("Error while saving word-topic distribution:" + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -483,7 +487,7 @@ public class Model {
             writer.close();
         }
         catch(Exception e){
-            System.out.println("Error while saving model others:" + e.getMessage());
+            LOG.debug("Error while saving model others:" + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -525,7 +529,7 @@ public class Model {
             writer.close();
         }
         catch(Exception e){
-            System.out.println("Error while saving model twords: " + e.getMessage());
+            LOG.debug("Error while saving model twords: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -541,7 +545,7 @@ public class Model {
         }
 
         for (int k = 0; k < K; k++){
-            TopicDescription dataTopic = new TopicDescription();
+            Topic dataTopic = new Topic();
             dataTopic.setId(String.valueOf(k));
             ArrayList<Pair> wordsProbsList = new ArrayList<Pair>();
             for (int w = 0; w < V; w++){
@@ -556,7 +560,7 @@ public class Model {
                 if (data.localDict.contains((Integer)wordsProbsList.get(i).first)){
                     String word = data.localDict.getWord((Integer)wordsProbsList.get(i).first);
 
-                    WordDescription dataWord = new WordDescription();
+                    Word dataWord = new Word();
                     dataWord.setValue(word);
                     dataWord.setScore(Double.valueOf(String.valueOf(wordsProbsList.get(i).second)));
 
@@ -581,6 +585,7 @@ public class Model {
                     vector.add(score);
                 }
             }
+            shape.setVector(vector);
             dataModel.add(shape);
         }
 
@@ -656,7 +661,7 @@ public class Model {
             reader.close();
         }
         catch (Exception e){
-            System.out.println("Error while reading other file:" + e.getMessage());
+            LOG.debug("Error while reading other file:" + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -694,7 +699,7 @@ public class Model {
 
                     StringTokenizer tknr2 = new StringTokenizer(token, ":");
                     if (tknr2.countTokens() != 2){
-                        System.out.println("Invalid word-topic assignment line\n");
+                        LOG.debug("Invalid word-topic assignment line\n");
                         return false;
                     }
 
@@ -717,7 +722,7 @@ public class Model {
             reader.close();
         }
         catch (Exception e){
-            System.out.println("Error while loading model: " + e.getMessage());
+            LOG.debug("Error while loading model: " + e.getMessage());
             e.printStackTrace();
             return false;
         }

@@ -28,11 +28,17 @@
 
 package org.librairy.client.topics;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public class Inferencer
 {
+
+    private static final Logger LOG = LoggerFactory.getLogger(Inferencer.class);
+
     // Train model
     public Model trnModel;
     public Dictionary globalDict;
@@ -47,6 +53,7 @@ public class Inferencer
     {
         this.option = option;
 
+        LOG.info("Loading existing model ..");
         trnModel = new Model(option);
         trnModel.init(false);
 
@@ -56,14 +63,15 @@ public class Inferencer
     //inference new model ~ getting data from a specified dataset
     public Model inference() throws FileNotFoundException, IOException
     {
+        LOG.info("Filtering words by model vocabulary ..");
         newModel = new Model(option, trnModel);
         newModel.init(true);
         newModel.initInf();
 
-        System.out.println("Sampling " + newModel.niters + " iterations for inference!");		
-        System.out.print("Iteration");
+        LOG.info("Sampling " + newModel.niters + " iterations for inference!");
+        LOG.debug("Iteration");
         for (newModel.liter = 1; newModel.liter <= newModel.niters; newModel.liter++){
-            System.out.format("%6d", newModel.liter);
+            LOG.debug(String.valueOf(newModel.liter));
 
             // for all newz_i
             for (int m = 0; m < newModel.M; ++m){
@@ -79,11 +87,11 @@ public class Inferencer
                 newModel.updateParams(trnModel);
             }
 
-            System.out.print("\b\b\b\b\b\b");
+            LOG.debug(("\b\b\b\b\b\b"));
         }// end iterations
         newModel.liter--;
 
-        System.out.println("\nSaving the inference outputs!");
+        LOG.debug("\nSaving the inference outputs!");
         String outputPrefix = newModel.dfile;
         if (outputPrefix.endsWith(".gz")) {
             outputPrefix = outputPrefix.substring(0, outputPrefix.length() - 3);

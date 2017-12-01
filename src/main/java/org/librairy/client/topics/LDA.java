@@ -31,12 +31,16 @@ package org.librairy.client.topics;
 import java.io.FileNotFoundException;
 
 import org.kohsuke.args4j.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * JGibbLabeledLDA
  */
 public class LDA
 {
+    private static final Logger LOG = LoggerFactory.getLogger(LDA.class);
+
     public static void main(String args[])
     {
         LDACmdOption option = new LDACmdOption();
@@ -59,21 +63,21 @@ public class LDA
                 Model newModel = inferencer.inference();
             }
         } catch (CmdLineException cle){
-            System.out.println("Command line error: " + cle.getMessage());
+            LOG.debug("Command line error: " + cle.getMessage());
             showHelp(parser);
             return;
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             return;
         } catch (Exception e){
-            System.out.println("Error in main: " + e.getMessage());
+            LOG.debug("Error in main: " + e.getMessage());
             e.printStackTrace();
             return;
         }
     }
 
     public static void showHelp(CmdLineParser parser){
-        System.out.println("LDA [options ...] [arguments...]");
+        LOG.debug("LDA [options ...] [arguments...]");
         parser.printUsage(System.out);
     }
 

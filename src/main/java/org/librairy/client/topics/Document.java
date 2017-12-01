@@ -29,8 +29,12 @@
 package org.librairy.client.topics;
 
 import gnu.trove.list.array.TIntArrayList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Document {
+
+    private static final Logger LOG = LoggerFactory.getLogger(Document.class);
 
     //----------------------------------------------------
     //Instance Variables

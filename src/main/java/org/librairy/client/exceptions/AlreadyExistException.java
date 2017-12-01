@@ -5,13 +5,13 @@ import java.io.IOException;
 /**
  * @author Badenes Olmedo, Carlos <cbadenes@fi.upm.es>
  */
-public class InvalidCredentialsError extends IOException {
+public class AlreadyExistException extends IOException {
 
-    public InvalidCredentialsError(String msg, Throwable e){
+    public AlreadyExistException(String msg, Throwable e){
         super(msg,e);
     }
 
-    public InvalidCredentialsError(String msg){
+    public AlreadyExistException(String msg){
         super(msg);
     }
 }

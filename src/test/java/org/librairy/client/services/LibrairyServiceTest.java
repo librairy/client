@@ -1,6 +1,5 @@
 package org.librairy.client.services;
 
-import com.google.common.collect.ImmutableMap;
 import es.cbadenes.lab.test.IntegrationTest;
 import org.junit.After;
 import org.junit.Assert;
@@ -10,18 +9,17 @@ import org.junit.experimental.categories.Category;
 import org.librairy.client.LibrairyClient;
 import org.librairy.client.exceptions.InvalidCredentialsError;
 import org.librairy.client.exceptions.ModelError;
-import org.librairy.client.exceptions.StorageError;
-import org.librairy.client.model.DataItem;
 import org.librairy.client.model.DataModel;
-import org.librairy.client.model.TopicDistance;
-import org.librairy.metrics.distance.ExtendedKendallsTauDistance;
 import org.librairy.metrics.distance.ExtendedKendallsTauSimilarity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * @author Badenes Olmedo, Carlos <cbadenes@fi.upm.es>
@@ -37,7 +35,7 @@ public class LibrairyServiceTest {
     @Before
     public void setup() throws InvalidCredentialsError {
         this.client     = new LibrairyClient();
-        this.service    = this.client.connect("librairy.linkeddata.es","oeg","0de4422b52ad");
+        this.service    = this.client.connect("librairy.linkeddata.es","oeg","kcap2017");
     }
 
     @After
@@ -109,7 +107,7 @@ public class LibrairyServiceTest {
     @Test
     public void similaritiesTest(){
         try {
-            service.similarities("kcap", Optional.empty());
+            service.similarities("ecommerce", Optional.of(0.5));
         } catch (ModelError modelError) {
             Assert.fail(modelError.getMessage());
         }

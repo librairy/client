@@ -1,44 +1,39 @@
 package org.librairy.client.services;
 
 import com.google.common.base.Strings;
-import com.google.common.escape.Escaper;
-import com.google.common.escape.Escapers;
+import lombok.Getter;
 import org.apache.commons.lang.StringUtils;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
-import org.librairy.boot.model.Event;
-import org.librairy.boot.model.domain.resources.*;
-import org.librairy.boot.model.modules.EventBus;
-import org.librairy.boot.model.modules.RoutingKey;
-import org.librairy.boot.storage.dao.*;
-import org.librairy.boot.storage.exception.DataNotFound;
-import org.librairy.boot.storage.generator.URIGenerator;
+import org.librairy.client.dao.DomainsDao;
+import org.librairy.client.dao.ItemsDao;
+import org.librairy.client.dao.PartsDao;
+import org.librairy.client.exceptions.AlreadyExistException;
+import org.librairy.client.exceptions.InvalidCredentialsError;
 import org.librairy.client.exceptions.ModelError;
 import org.librairy.client.exceptions.StorageError;
 import org.librairy.client.model.*;
 import org.librairy.client.topics.Estimator;
 import org.librairy.client.topics.Inferencer;
-import org.librairy.client.topics.LDA;
 import org.librairy.client.topics.LDACmdOption;
+import org.librairy.client.topics.Model;
 import org.librairy.metrics.data.Ranking;
-import org.librairy.metrics.distance.*;
+import org.librairy.metrics.distance.RankingSimilarityMetric;
 import org.librairy.metrics.similarity.JensenShannonSimilarity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationContext;
 
 import java.io.*;
 import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import java.util.zip.GZIPOutputStream;
 
 /**
  * @author Badenes Olmedo, Carlos <cbadenes@fi.upm.es>
@@ -47,25 +42,30 @@ public class LibrairyService {
 
     private static final Logger LOG = LoggerFactory.getLogger(LibrairyService.class);
 
-    private final ItemsDao itemsDao;
+    @Getter
     private final DomainsDao domainsDao;
-    private final AnnotationsDao annotationsDao;
-    private final EventBus eventBus;
-    private final ParametersDao parametersDao;
-    private final TopicsDao topicsDao;
+    @Getter
+    private final ItemsDao  itemsDao;
+    @Getter
+    private final PartsDao partsDao;
 
-    public LibrairyService(ApplicationContext context){
-        this.itemsDao       = context.getBean(ItemsDao.class);
-        this.domainsDao     = context.getBean(DomainsDao.class);
-        this.annotationsDao = context.getBean(AnnotationsDao.class);
-        this.eventBus       = context.getBean(EventBus.class);
-        this.parametersDao  = context.getBean(ParametersDao.class);
-        this.topicsDao      = context.getBean(TopicsDao.class);
+    private final RestService restService;
+
+
+    public LibrairyService(RestService restService){
+        this.restService    = restService;
+        this.domainsDao     = new DomainsDao(restService);
+        this.itemsDao       = new ItemsDao(restService);
+        this.partsDao       = new PartsDao(restService);
+
+        domainsDao.setItemsDao(itemsDao);
     }
 
     public void addFolder(String folderPath, List<String> domains, Optional<Map<String,String>> parameters ) throws IOException {
         Instant startModel  = Instant.now();
         AtomicInteger counter = new AtomicInteger();
+
+
         Files.list(Paths.get(folderPath)).forEach(paper -> {
             File file = paper.toFile();
             try {
@@ -83,6 +83,8 @@ public class LibrairyService {
                 LOG.error("No file found: " + file.getAbsolutePath(),e);
             } catch (StorageError e) {
                 LOG.error("Item not added: " + file.getAbsolutePath(),e);
+            } catch (Exception e){
+                LOG.error("Error handling file: " + file.getAbsolutePath(),e);
             }
         });
 
@@ -95,15 +97,11 @@ public class LibrairyService {
         if (counter.get() > 0){
             // update topics in domain
             domains.forEach( domain -> {
-                String domainUri = URIGenerator.fromId(Resource.Type.DOMAIN, domain);
-                Resource resource = new Resource();
-                resource.setUri(domainUri);
-
-                if (parameters.isPresent()){
-                    parameters.get().entrySet().forEach(entry -> parametersDao.saveOrUpdate(domainUri,entry.getKey(),entry.getValue()));
+                try {
+                    domainsDao.updateTopics(domain);
+                } catch (IOException e) {
+                    LOG.warn("Domain not updated: " + domain + ": " +  e.getMessage());
                 }
-
-                this.eventBus.post(Event.from(resource),RoutingKey.of("domain.pending"));
             });
 
         }
@@ -111,53 +109,38 @@ public class LibrairyService {
     }
 
 
-    private String newItem(DataItem dataItem, List<String> domains) throws StorageError {
+    private String newItem(DataItem dataItem, List<String> domains) throws StorageError, InvalidCredentialsError, AlreadyExistException {
 
         if (dataItem.isEmpty()){
             throw new StorageError("DataItem without name or content");
         }
 
-        org.librairy.boot.model.domain.resources.Item internalItem = Resource.newItem(dataItem.getContent());
-        String nameCandidate = StringUtils.substringBefore(dataItem.getContent(),"\n");
-        internalItem.setDescription(nameCandidate.length()<100?nameCandidate:dataItem.getName());
-        internalItem.setLanguage(dataItem.getLanguage().name().toLowerCase());
-
-        if (!itemsDao.save(internalItem) && !itemsDao.exists(internalItem.getUri())) throw new StorageError("DataItem not saved");
-
+        String nameCandidate = (Strings.isNullOrEmpty(dataItem.getName()))? StringUtils.substringBefore(dataItem.getContent(),"\n") : dataItem.getName();
+        String itemId = itemsDao.save(nameCandidate,dataItem.getLanguage().name(),dataItem.getContent());
 
         if (!domains.isEmpty()){
 
             for(String domainId: domains){
 
-                String domainUri = null;
                 try {
-                    domainUri = URIGenerator.fromId(Resource.Type.DOMAIN, URLEncoder.encode(domainId,"UTF-8"));
+                    String id = domainsDao.save(domainId, "");
+                    domainsDao.addItem(id,itemId);
                 } catch (UnsupportedEncodingException e) {
                     throw new StorageError("Invalid domain name: " + domainId, e);
                 }
-
-                if (!domainsDao.exists(domainUri)){
-                    Domain domain = Resource.newDomain(domainId);
-                    domain.setUri(domainUri);
-                    domainsDao.save(domain);
-                }
-
-                if (!domainsDao.addItem(domainUri, internalItem.getUri())) throw new StorageError("DataItem not added to domain: " + domainId);
             }
         }
-        LOG.info("Saved: " + internalItem.getUri());
-        return internalItem.getUri();
+        LOG.info("Saved: " + restService.uriOf("item",itemId));
+        return itemId;
     }
 
 
     public DataModel newModel(DataModel.ALGORITHM algorithm, String domain, Optional<List<String>> stopwords, Optional<Integer> iterations, Optional<Integer> numTopics, Optional<Double> alpha, Optional<Double> beta, Optional<Integer> wordsPerTopic, Optional<Integer> maxSize) throws ModelError {
 
         String domainId;
-        String domainUri;
         try {
             domainId = URLEncoder.encode(domain,"UTF-8");
-            domainUri = URIGenerator.fromId(Resource.Type.DOMAIN, domainId);
-            if(!domainsDao.exists(domainUri)) throw new ModelError("Domain does not exist: " + domainUri);
+            if(!domainsDao.exists(domainId)) throw new ModelError("Domain does not exist: " + domainId);
 
         } catch (UnsupportedEncodingException e) {
             throw new ModelError("Invalid domain name: " + domain);
@@ -178,31 +161,23 @@ public class LibrairyService {
             FileWriter writer = new FileWriter(csvFile);
 
             AtomicInteger counter = new AtomicInteger();
-            Integer size = 100;
             boolean completed = false;
+
+            Optional<Integer> size  = Optional.of(100);
             Optional<String> offset = Optional.empty();
 
             Integer maxElements = maxSize.isPresent()? maxSize.get() : 100;
             List<String> uris = new ArrayList<>();
             while(!completed && (counter.get() <= maxElements)){
-                List<Item> items = domainsDao.listItems(domainUri, size, offset, false);
+                List<Item> items = domainsDao.getItems(domainId, false, size, offset);
 
-                completed = items.size() < size;
-                offset = Optional.of(items.get(items.size()-1).getUri());
+                completed = items.size() < size.get();
+                offset = Optional.of(items.get(items.size()-1).getId());
 
                 for(Item item: items){
                     if (counter.incrementAndGet() > maxElements) break;
-                    String content;
+                    String content = itemsDao.getAnnotation(item.getId(),"lemma");
                     uris.add(item.getUri());
-                    try {
-                        List<Annotation> annotations = annotationsDao.getByResource(item.getUri(), Optional.of(AnnotationFilter.byType("lemma").build()));
-                        if (annotations.isEmpty()) throw new DataNotFound("annotation is empty");
-                        content = annotations.get(0).getValue().get("content");
-                    } catch (DataNotFound dataNotFound) {
-                        LOG.warn("No annotation found for item: " + item.getUri());
-                        Item dataItem = itemsDao.get(item.getUri(), true).get().asItem();
-                        content = TextService.escape(dataItem.getContent());
-                    }
                     String finalContent = content;
                     if (stopwords.isPresent()){
                         finalContent = Arrays.stream(content.split(" ")).filter(token -> !stopwords.get().contains(token)).collect(Collectors.joining(" "));
@@ -265,13 +240,20 @@ public class LibrairyService {
             List<Shape> newShapes = dataModel.getShapes().stream().sorted((a, b) -> Integer.valueOf(a.getUri()).compareTo(Integer.valueOf(b.getUri()))).map(shape -> {
                 String uri = uris.get(Integer.valueOf(shape.getUri()));
                 Shape newShape = new Shape();
-                newShape.setType(URIGenerator.retrieveId(uri));
+                newShape.setType(StringUtils.substringAfterLast(uri,"/"));
                 newShape.setUri(uri);
                 newShape.setVector(shape.getVector());
                 return newShape;
             }).collect(Collectors.toList());
 
             dataModel.setShapes(newShapes);
+
+
+            BufferedWriter uriWriter = FileService.writer(Paths.get("output", "models", "lda", domainId, "model.uris.txt").toFile().getAbsolutePath());
+            for(String uri: uris){
+                uriWriter.write(uri+"\n");
+            }
+            uriWriter.close();
 
             return dataModel;
 
@@ -318,8 +300,29 @@ public class LibrairyService {
             parser.parseArgument(args);
             LOG.info("inference topic distributions for document: " + text.getAbsolutePath() + " ..");
             Inferencer inferencer = new Inferencer(option);
-            inferencer.inference();
-            LOG.info("topic distributions created");
+            Model model = inferencer.inference();
+
+            LOG.info("Topic Distributions: ");
+            model.getDataModel().getShapes().forEach(shape -> {
+                int index = 0;
+                for (Double score : shape.getVector()){
+                    LOG.info("- Topic " + index++ + ": \t" + score);
+                }
+            });
+
+            // move output files
+
+            File outputFolder = Paths.get("output", "inferences","lda",domainId).toFile();
+            if (!outputFolder.exists()) outputFolder.mkdirs();
+
+            Paths.get(text.getParent(),text.getName()+".model.documents.txt");
+
+            Files.move(Paths.get(text.getName()+".model.documents.txt"),Paths.get("output", "inferences","lda",domainId,text.getName()+".model.documents.txt"), StandardCopyOption.REPLACE_EXISTING);
+            Files.move(Paths.get(text.getName()+".model.parameters.txt"),Paths.get("output", "inferences","lda",domainId,text.getName()+".model.parameters.txt"), StandardCopyOption.REPLACE_EXISTING);
+            Files.move(Paths.get(text.getName()+".model.topics.txt"),Paths.get("output", "inferences","lda",domainId,text.getName()+".model.topics.txt"), StandardCopyOption.REPLACE_EXISTING);
+            Files.move(Paths.get(text.getName()+".model.vocabulary.txt"),Paths.get("output", "inferences","lda",domainId,text.getName()+".model.vocabulary.txt"), StandardCopyOption.REPLACE_EXISTING);
+            Files.move(Paths.get(text.getName()+".model.words.txt"),Paths.get("output", "inferences","lda",domainId,text.getName()+".model.words.txt"), StandardCopyOption.REPLACE_EXISTING);
+
         } catch (CmdLineException e) {
             LOG.error("Error",e);
             throw new ModelError("Error creating temporal files",e);
@@ -342,10 +345,10 @@ public class LibrairyService {
             folder.mkdirs();
 
 
-            List<TopicDescription> topics1 = topicsDao.get(domain1, numWords);
+            List<Topic> topics1 = domainsDao.getTopics(domain1, numWords);
             writeTopics(topics1, new File(folder,"topics."+domain1+".txt"));
 
-            List<TopicDescription> topics2 = topicsDao.get(domain2, numWords);
+            List<Topic> topics2 = domainsDao.getTopics(domain2, numWords);
             writeTopics(topics2, new File(folder,"topics."+domain2+".txt"));
 
 
@@ -356,9 +359,9 @@ public class LibrairyService {
 
             // Cartesian product
             LOG.info("Comparing all topic distributions ..");
-            for(TopicDescription t1 : topics1){
+            for(Topic t1 : topics1){
 
-                for(TopicDescription t2 : topics2){
+                for(Topic t2 : topics2){
 
                     Double score = compare(t1,t2,metric);
 
@@ -377,17 +380,17 @@ public class LibrairyService {
     }
 
 
-    private Double compare(TopicDescription t1, TopicDescription t2, RankingSimilarityMetric metric){
+    private Double compare(Topic t1, Topic t2, RankingSimilarityMetric metric){
 
         Ranking r1 = new Ranking();
 
-        for(WordDescription wordDescription : t1.getWords()){
+        for(Word wordDescription : t1.getWords()){
             r1.add(wordDescription.getValue(),wordDescription.getScore());
         }
 
         Ranking r2 = new Ranking();
 
-        for(WordDescription wordDescription : t2.getWords()){
+        for(Word wordDescription : t2.getWords()){
             r2.add(wordDescription.getValue(),wordDescription.getScore());
         }
 
@@ -396,50 +399,62 @@ public class LibrairyService {
 
     }
 
-    private void writeTopics(List<TopicDescription> topics, File file) throws IOException {
+    private void writeTopics(List<Topic> topics, File file) throws IOException {
         BufferedWriter writer = FileService.writer(file.getAbsolutePath());
-        for(TopicDescription topic : topics){
+        for(Topic topic : topics){
             writer.write("- Topic " + topic.getId()+" :\n");
-            for (WordDescription wordDescription : topic.getWords()){
+            for (Word wordDescription : topic.getWords()){
                 writer.write("\t - " + wordDescription.getValue() + " \t: " + wordDescription.getScore()+"\n");
             }
         }
         writer.close();
     }
 
-    public List<DataSimilarity> similarities(String domain1, Optional<Double> minScore) throws ModelError {
+    public Space similarities(String domain1, Optional<Double> minScore) throws ModelError {
 
 
         try {
             File folder = Paths.get("output", "similarities", "documents", domain1).toFile();
             folder.mkdirs();
 
+            Space space = new Space();
 
-            String domainUri = URIGenerator.fromId(Resource.Type.DOMAIN, domain1);
-            Integer size = 100;
+            Optional<Integer> size = Optional.of(100);
             Optional<String> offset = Optional.empty();
             Boolean completed = false;
 
-            List<DataShape> shapes = new ArrayList<>();
+            ConcurrentLinkedQueue<DataShape> shapes = new ConcurrentLinkedQueue<>();
 
             LOG.info("Getting vectorial representations of documents in domain: " + domain1 + " ...");
+            AtomicInteger counter = new AtomicInteger();
             while(!completed){
 
-                List<Item> partialItems = domainsDao.listItems(domainUri, size, offset, false);
+                List<Item> partialItems = domainsDao.getItems(domain1, false, size, offset);
 
-                for(Item item: partialItems){
+                partialItems.parallelStream().forEach(item -> {
+
+                    LOG.info("Item " + counter.incrementAndGet() + " loaded");
+                    space.add(item);
                     DataShape shape = new DataShape();
                     shape.setUri(item.getUri());
 
-                    List<Double> vector = topicsDao.getShapeOf(item.getUri(), domain1);
-                    shape.setVector(vector);
-                    shapes.add(shape);
+                    List<Topic> topics = null;
+                    try {
+                        topics = domainsDao.getTopics(domain1, item.getId(), Optional.of(0));
+                        List<Double> vector = topics.stream().sorted((a, b) -> a.getId().compareTo(b.getId())).map(t -> t.getScore()).collect(Collectors.toList());
 
-                }
+                        shape.setVector(vector);
+                        shapes.add(shape);
 
-                completed = partialItems.size() < size;
+                    } catch (InvalidCredentialsError e) {
+                        LOG.warn("error",e);
+                    }
 
-                if(!completed) offset = Optional.of(partialItems.get(partialItems.size()-1).getUri());
+                });
+
+                completed = partialItems.size() < size.get();
+
+                if(!completed) offset = Optional.of(partialItems.get(partialItems.size()-1).getId());
             }
 
 
@@ -449,7 +464,6 @@ public class LibrairyService {
             // Cartesian product
             LOG.info("Comparing all topic distributions ..");
 
-            List<DataSimilarity> similarities = new ArrayList<>();
             for(DataShape s1 : shapes){
                 for(DataShape s2 : shapes){
 
@@ -459,10 +473,10 @@ public class LibrairyService {
 
                     if (minScore.isPresent() && score > minScore.get()){
                         writer.write(s1.getUri()+","+s2.getUri()+","+score+"\n");
-                        similarities.add(new DataSimilarity(s1.getUri(),s2.getUri(), score));
+                        space.add(new DataSimilarity(s1.getUri(),s2.getUri(), score));
                     }else if (!minScore.isPresent()){
                         writer.write(s1.getUri()+","+s2.getUri()+","+score+"\n");
-                        similarities.add(new DataSimilarity(s1.getUri(),s2.getUri(), score));
+                        space.add(new DataSimilarity(s1.getUri(),s2.getUri(), score));
                     }
                 }
             }
@@ -470,7 +484,7 @@ public class LibrairyService {
 
             writer.close();
             LOG.info("Similarities saved at " + outputFile.getAbsolutePath());
-            return similarities;
+            return space;
         } catch (IOException e) {
             LOG.error("Error",e);
             throw new ModelError("Error creating output file",e);
@@ -479,35 +493,6 @@ public class LibrairyService {
 
     }
 
-    public List<Resource> listItems(Optional<String> domain, Optional<Integer> maxNumber, Optional<String> offset){
-
-        List<Resource> items = new ArrayList<>();
-        if (domain.isPresent()){
-
-            String domainUri   = URIGenerator.fromId(Resource.Type.DOMAIN, domain.get());
-            boolean completed = false;
-            Integer size = 100;
-            AtomicInteger counter = new AtomicInteger();
-            Optional<String> lastItem = offset;
-            while(!completed){
-
-                List<Item> partialItems = domainsDao.listItems(domainUri, size, lastItem, false);
-
-                for(Item item: partialItems){
-                    if (maxNumber.isPresent() && counter.incrementAndGet() > maxNumber.get()) break;
-                    items.add(item);
-                }
-
-                completed = (partialItems.size() < size) || (maxNumber.isPresent() && counter.get() > maxNumber.get());
-
-                if (!completed) lastItem = Optional.of(partialItems.get(partialItems.size()-1).getUri());
-
-            }
-
-        }
-
-        return items;
-    }
 
 
 

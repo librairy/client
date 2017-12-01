@@ -1,8 +1,6 @@
 package org.librairy.client.model;
 
 import lombok.Data;
-import org.librairy.boot.model.domain.resources.Shape;
-import org.librairy.boot.model.domain.resources.TopicDescription;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,11 +11,11 @@ import java.util.List;
 @Data
 public class DataModel {
 
-    List<TopicDescription> topics = new ArrayList<>();
+    List<Topic> topics = new ArrayList<>();
 
     List<Shape> shapes = new ArrayList<>();
 
-    public void add(TopicDescription topic){
+    public void add(Topic topic){
         this.topics.add(topic);
     }
 
@@ -26,6 +24,6 @@ public class DataModel {
     }
 
     public enum ALGORITHM{
-        LDA;
+        LDA
     }
 }

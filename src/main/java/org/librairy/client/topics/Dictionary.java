@@ -30,11 +30,16 @@ package org.librairy.client.topics;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import org.librairy.client.services.FileService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 
 public class Dictionary {
+
+    private static final Logger LOG = LoggerFactory.getLogger(Dictionary.class);
+
     public TObjectIntHashMap<String> word2id;
     public TIntObjectHashMap<String> id2word;
 
@@ -114,7 +119,7 @@ public class Dictionary {
             return true;
         }
         catch (Exception e) {
-            System.out.println("Error while reading dictionary:" + e.getMessage());
+            LOG.debug("Error while reading dictionary:" + e.getMessage());
             e.printStackTrace();
             return false;
         }		
@@ -134,7 +139,7 @@ public class Dictionary {
             return true;
         }
         catch (Exception e) {
-            System.out.println("Error while writing word map " + e.getMessage());
+            LOG.debug("Error while writing word map " + e.getMessage());
             e.printStackTrace();
             return false;
         }
